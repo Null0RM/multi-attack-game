@@ -4,11 +4,11 @@ pragma solidity ^0.8.20;
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-contract MultoAttackToken is ERC20 {
+contract MultiAttackToken is ERC20, Ownable {
     mapping(address => bool) private instanceAddresses;
     mapping(address => bool) private proxyAddresses;
 
-    constructor() ERC20("MultiAttackToken", "MAT") Ownable(msg.sender) {}
+    constructor() ERC20("Multi Attack Token", "MAT") Ownable(msg.sender) {}
     
     modifier onlyGame() {
         require(proxyAddresses[msg.sender]);
@@ -59,7 +59,7 @@ contract MultoAttackToken is ERC20 {
      * ETH와 1:1로 매칭되는 가치를 지닌 MultiAttackToken을 발행해주는 함수
      * 유의미한 전투가 될 수 있도록 하기 위하여 최소 mint수량은 0.001 ether이다. 
      */
-    function mint() public override payable {
+    function mint() public payable {
         require(msg.value >= 0.001 ether, "INSUFFICIENT_AMOUNT_DEPOSITED");
 
        _mint(msg.sender, msg.value);
@@ -68,7 +68,7 @@ contract MultoAttackToken is ERC20 {
     /**
      * MultiAttackToken을 burn하고, 그 수량만큼의 이더를 반환해주는 함수.
      */
-    function burn(uint256 value) public override {
+    function burn(uint256 value) public {
         require(value >= 0.001 ether, "TOKEN_AMOUNT_TOO_SMALL");
         _burn(msg.sender, value);
         (bool suc, ) = msg.sender.call{value: value}("");
