@@ -10,8 +10,8 @@ contract MultiAttackNFT is ERC721, Ownable {
 
     uint256 tokenId;
 
-    constructor() ERC721("Multi Attack NFT", "MAN") Ownable(msg.sender) {} 
-    
+    constructor() ERC721("Multi Attack NFT", "MAN") Ownable(msg.sender) {}
+
     modifier onlygame() {
         require(proxyAddresses[msg.sender]);
         _;
@@ -36,11 +36,12 @@ contract MultiAttackNFT is ERC721, Ownable {
 
     function registerInstance(address instanceAddr) public onlygame {
         require(!instanceAddresses[instanceAddr], "ALREADY_REGISTERED");
-        
+
         instanceAddresses[instanceAddr] = true;
     }
 
-    function mint(address _to) public onlyInstance returns (uint256 id) { // 여길 어떻게 더 채워야할까?
+    function mint(address _to) public onlyInstance returns (uint256 id) {
+        // 여길 어떻게 더 채워야할까?
         id = tokenId;
         _mint(_to, tokenId);
         tokenId++;

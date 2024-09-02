@@ -53,10 +53,26 @@ __무운을 빕니다!__
     * Druid : 드루이드 (강한 공격력, 강한 방어력, 높은 공격 코스트, 힐 능력 존재)
 
 #### phase4
-- 전투 페이즈
-    * war token을 지불하고, 그만큼의 공격 수행 가능
-    * 빠른 공격을 위해 multicall수행 가능
-    * 체력이 0이 되면 더이상 공격을 수행 불가 (underflow 체크)
+- 전투 페이즈    
+    * war token을 지불하고, 그만큼의 공격 수행 가능   
+    * 빠른 공격을 위해 multicall수행 가능        
+    * 체력이 0이 되면 더이상 공격을 수행 불가 (underflow 체크)     
+- Warrior     
+	* Berserk Slash: 피해량 40, MP 소모 20     
+	* Whirlwind: 피해량 30(모든 적에게), MP 소모 30     
+	* Shield Bash: 피해량 15, MP 소모 15 (추가 효과: 1초 기절)     
+- Archer     
+	* Piercing Arrow: 피해량 50, MP 소모 25     
+	* Multi-Shot: 피해량 25(각 화살당), MP 소모 35     
+	* Explosive Trap: 피해량 60, MP 소모 20     
+- Mage     
+	* Fireball: 피해량 70, MP 소모 30 (추가 화상 효과)     
+	* Lightning Bolt: 피해량 60, MP 소모 25     
+	* Ice Spike: 피해량 40, MP 소모 20 (추가 둔화 효과)     
+- Druid     
+	* Nature’s Wrath: 피해량 45, MP 소모 20     
+	* Healing Touch: 치유량 50, MP 소모 25     
+	* Thorn Armor: 피해량 10(반격 시), MP 소모 15 (10초 지속)     
 
 ### phase5
 - 보상 페이즈

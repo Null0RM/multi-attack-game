@@ -9,14 +9,14 @@ contract MultiAttackToken is ERC20, Ownable {
     mapping(address => bool) private proxyAddresses;
 
     constructor() ERC20("Multi Attack Token", "MAT") Ownable(msg.sender) {}
-    
+
     modifier onlyGame() {
         require(proxyAddresses[msg.sender]);
         _;
     }
 
     /**
-     * registerInstance, deleteInstance를 호출하는 Game컨트랙트를 등록하는 함수, 
+     * registerInstance, deleteInstance를 호출하는 Game컨트랙트를 등록하는 함수,
      */
     function registerProxy(address proxyAddr) public onlyOwner {
         require(!proxyAddresses[proxyAddr], "ALREADY_REGISTERED");
@@ -29,7 +29,7 @@ contract MultiAttackToken is ERC20, Ownable {
      */
     function registerInstance(address instanceAddr) public onlyGame {
         require(!instanceAddresses[instanceAddr], "ALREADY_REGISTERED");
-        
+
         instanceAddresses[instanceAddr] = true;
     }
 
@@ -49,20 +49,19 @@ contract MultiAttackToken is ERC20, Ownable {
         if (instanceAddresses[msg.sender]) {
             _transfer(from, to, value);
             return true;
-        }
-        else {
+        } else {
             return super.transferFrom(from, to, value); // 이렇게 쓰는게 맞나?
         }
     }
 
     /**
      * ETH와 1:1로 매칭되는 가치를 지닌 MultiAttackToken을 발행해주는 함수
-     * 유의미한 전투가 될 수 있도록 하기 위하여 최소 mint수량은 0.001 ether이다. 
+     * 유의미한 전투가 될 수 있도록 하기 위하여 최소 mint수량은 0.001 ether이다.
      */
     function mint() public payable {
         require(msg.value >= 0.001 ether, "INSUFFICIENT_AMOUNT_DEPOSITED");
 
-       _mint(msg.sender, msg.value);
+        _mint(msg.sender, msg.value);
     }
 
     /**
@@ -71,7 +70,7 @@ contract MultiAttackToken is ERC20, Ownable {
     function burn(uint256 value) public {
         require(value >= 0.001 ether, "TOKEN_AMOUNT_TOO_SMALL");
         _burn(msg.sender, value);
-        (bool suc, ) = msg.sender.call{value: value}("");
+        (bool suc,) = msg.sender.call{value: value}("");
         require(suc, "TOKEN_ETH_EXCHANGE_FAILED");
     }
 }

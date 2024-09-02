@@ -7,16 +7,12 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {MultiAttackToken} from "./MAT.sol";
 import {MultiAttackNFT} from "./MAN.sol";
-import {GameInstance} from "./Instance.sol";
+import {GameInstance} from "./GameInstance.sol";
 
-contract MultiAttack is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable, IMultiAttack {
+contract MultiAttack is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable {
     // ERC20 & ERC721 tokenomics information
     MultiAttackToken MAT;
     MultiAttackNFT MAN;
-    
-    // enumerations
-    Class public class;
-    GamePhase public gamePhase;
 
     event createInstance(address newInstance);
 
@@ -30,19 +26,19 @@ contract MultiAttack is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
         __UUPSUpgradeable_init();
 
         MAT = MultiAttackToken(_MAT);
-        MAN = MultiAttackNFT(_MAN);      
-        
+        MAN = MultiAttackNFT(_MAN);
     }
 
-    function invite(address _to, string msg) public payable returns (address newInstance) {
+    function invite(address _to, string calldata message) public payable returns (address newInstance) {
         require(MAT.balanceOf(msg.sender) >= 0.0001 ether, "INSUFFICIENT_INVITE_FEE");
         MAT.transferFrom(msg.sender, address(this), 0.0001 ether); // 참가비로 지출
-        
-        (bool suc, ) = _to.call{value: 0.001, data: abi.encode(msg)}(""); // msg를 통해 게임으로 초대
+
+        (bool suc,) = _to.call{value: 1}(abi.encodePacked(message)); // msg를 통해 게임으로 초대
         require(suc, "INVITE_FAILED_BY_SEND_FAILED");
+
+        GameInstance instance = new GameInstance(msg.sender, _to, MAT, MAN);
         
-        newInstance = new GameInstance();
-        
+        newInstance = address(instance);
         emit createInstance(newInstance);
     }
 
@@ -55,9 +51,5 @@ contract MultiAttack is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
         _unpause();
     }
 
-    function _authorizeUpgrade(address newImplementation)
-        internal
-        onlyOwner
-        override
-    {}
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 }
