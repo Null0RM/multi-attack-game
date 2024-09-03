@@ -9,16 +9,13 @@ import {MultiAttackToken} from "./MAT.sol";
 import {MultiAttackNFT} from "./MAN.sol";
 import {GameInstance} from "./GameInstance.sol";
 
-contract MultiAttack is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable {
+contract MultiAttackV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable {
     // ERC20 & ERC721 tokenomics information
     MultiAttackToken MAT;
     MultiAttackNFT MAN;
+    uint256 public gameNum;
 
     event createInstance(address newInstance);
-
-    constructor() {
-        _disableInitializers();
-    }
 
     function initialize(address _MAT, address _MAN) public initializer {
         __Pausable_init();
@@ -29,16 +26,20 @@ contract MultiAttack is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
         MAN = MultiAttackNFT(_MAN);
     }
 
-    function invite(address _to, string calldata message) public payable returns (address newInstance) {
+    function invite(address _to, string calldata message) public payable whenNotPaused returns (address newInstance) {
         require(MAT.balanceOf(msg.sender) >= 0.0001 ether, "INSUFFICIENT_INVITE_FEE");
         MAT.transferFrom(msg.sender, address(this), 0.0001 ether); // 참가비로 지출
 
         (bool suc,) = _to.call{value: 1}(abi.encodePacked(message)); // msg를 통해 게임으로 초대
         require(suc, "INVITE_FAILED_BY_SEND_FAILED");
 
-        GameInstance instance = new GameInstance(msg.sender, _to, MAT, MAN);
-        
+        GameInstance instance = new GameInstance(msg.sender, _to, MAT, MAN, gameNum);
         newInstance = address(instance);
+        MAT.registerInstance(newInstance);
+        MAN.registerInstance(newInstance);
+
+        gameNum++;
+
         emit createInstance(newInstance);
     }
 
@@ -51,5 +52,8 @@ contract MultiAttack is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
         _unpause();
     }
 
-    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {
+        MAT.registerProxy(newImplementation);
+        MAN.registerProxy(newImplementation);
+    }
 }

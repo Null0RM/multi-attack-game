@@ -2,13 +2,15 @@
 pragma solidity ^0.8.20;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-contract MultiAttackToken is ERC20, Ownable {
+contract MultiAttackToken is ERC20 {
+    address owner;
     mapping(address => bool) private instanceAddresses;
     mapping(address => bool) private proxyAddresses;
 
-    constructor() ERC20("Multi Attack Token", "MAT") Ownable(msg.sender) {}
+    constructor() ERC20("Multi Attack Token", "MAT") {
+        owner = msg.sender;
+    }
 
     modifier onlyGame() {
         require(proxyAddresses[msg.sender]);
@@ -18,9 +20,9 @@ contract MultiAttackToken is ERC20, Ownable {
     /**
      * registerInstance, deleteInstance를 호출하는 Game컨트랙트를 등록하는 함수,
      */
-    function registerProxy(address proxyAddr) public onlyOwner {
+    function registerProxy(address proxyAddr) public {
         require(!proxyAddresses[proxyAddr], "ALREADY_REGISTERED");
-
+        require(msg.sender == owner || proxyAddresses[msg.sender], "UNAUTHORIZED_SENDER");
         proxyAddresses[proxyAddr] = true;
     }
 
@@ -46,7 +48,7 @@ contract MultiAttackToken is ERC20, Ownable {
      * 게임에서 instance에 transfer를 하는 상황이라면, user가 allow를 했을 것이기 때문에, approve없이도 할 수 있게 함
      */
     function transferFrom(address from, address to, uint256 value) public override returns (bool) {
-        if (instanceAddresses[msg.sender]) {
+        if (instanceAddresses[msg.sender] || proxyAddresses[msg.sender]) {
             _transfer(from, to, value);
             return true;
         } else {

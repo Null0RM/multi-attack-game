@@ -2,15 +2,17 @@
 pragma solidity ^0.8.20;
 
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-contract MultiAttackNFT is ERC721, Ownable {
+contract MultiAttackNFT is ERC721 {
+    address owner;
     mapping(address => bool) private instanceAddresses;
     mapping(address => bool) private proxyAddresses;
 
     uint256 tokenId;
 
-    constructor() ERC721("Multi Attack NFT", "MAN") Ownable(msg.sender) {}
+    constructor() ERC721("Multi Attack NFT", "MAN") {
+        owner = msg.sender;
+    }
 
     modifier onlygame() {
         require(proxyAddresses[msg.sender]);
@@ -22,8 +24,9 @@ contract MultiAttackNFT is ERC721, Ownable {
         _;
     }
 
-    function registerProxy(address proxyAddr) public onlyOwner {
+    function registerProxy(address proxyAddr) public {
         require(!proxyAddresses[proxyAddr], "ALREADY_REGISTERED");
+        require(msg.sender == owner || proxyAddresses[msg.sender], "UNAUTHORIZED_SENDER");
 
         proxyAddresses[proxyAddr] = true;
     }

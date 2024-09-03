@@ -65,28 +65,36 @@ contract GameInstance is IMultiAttack, Multicall {
         _;
     }
 
-    function Betting(uint256 bettingAmount, uint256 manaPointRate, uint256 healthPointRate) public {
+    function getPlayerStat(Role role) external view returns (User memory player) {
+        require(role <= Role.defender && role >= Role.challenger, "INVALID_INPUT");
+
+        player = players[playerAddr[role]];
+    }
+
+    function Betting(uint256 bettingAmount, uint256 manaPointRate, uint256 healthPointRate) public onlyParticipants {
         require(gamePhase >= GamePhase.readyPhase, "INCORRECT_PHASE"); // 게임 준비 단계 부터 베팅 가능
         require(gamePhase < GamePhase.winPhase, "INCORRECT_PHASE"); // 끝나기 전 까지만 베팅 가능
         require(bettingAmount >= 0.001 ether, "INSUFFICIENT_BETTING_AMOUNT");
         require(manaPointRate + healthPointRate == 100, "HP_AND_MP_SUMMATION_SHOULD_100");
 
-        uint tmp;
+        uint256 tmp;
 
         User memory player = players[msg.sender];
-
+        
+        if (player.chargeNum == 0)
+            require(bettingAmount <= 0.01 ether, "first charge cannot over 0.01 ether");
         if (player.HP_weight == 0) player.HP_weight = 100;
         if (player.MP_weight == 0) player.MP_weight = 100;
-    
+
         // 가스 fee 감소를 위해 어셈블리로 작성 가능
         player.userBet += bettingAmount;
-        bettingAmount /= 1e13;
-        tmp = (bettingAmount * healthPointRate / 100);
+        tmp = (bettingAmount / 1e13 * healthPointRate / 100);
         player.HP += tmp * player.HP_weight / 100;
-        player.MP += (bettingAmount - tmp) * player.MP_weight / 100;
+        player.MP += (bettingAmount / 1e13 - tmp) * player.MP_weight / 100;
+        player.chargeNum += 1;
 
         players[msg.sender] = player;
-        MAT.transferFrom(msg.sender, GameManager, bettingAmount);
+        MAT.transferFrom(msg.sender, address(this), bettingAmount);
     }
     /**
      * ################################### READY ######################################
@@ -97,7 +105,7 @@ contract GameInstance is IMultiAttack, Multicall {
     /**
      * 다른 컨트랙트 또는 EOA를 이용해 전투를 진행하고싶을 경우 이용하는 함수
      */
-    function delegationRole(address _to) external onlyParticipants {
+    function delegationRole(address _to) external onlyParticipants returns (User memory character) {
         if (msg.sender == playerAddr[Role.challenger]) {
             playerAddr[Role.challenger] = _to;
             players[_to] = players[msg.sender];
@@ -105,6 +113,7 @@ contract GameInstance is IMultiAttack, Multicall {
             playerAddr[Role.defender] = _to;
             players[_to] = players[msg.sender];
         }
+        character = players[_to];
     }
 
     /**
@@ -140,7 +149,6 @@ contract GameInstance is IMultiAttack, Multicall {
             player.status = UserStatus.war;
             player.HP_weight = 90;
             player.MP_weight = 110;
-
         } else if (class == WarClass.Mage) {
             player.class = WarClass.Mage;
             player.status = UserStatus.war;
@@ -172,71 +180,81 @@ contract GameInstance is IMultiAttack, Multicall {
 
     function berserkSlash() external onlyParticipants onlyWarrior {
         require(gamePhase == GamePhase.warPhase, "INCORRECT_PHASE");
-        uint mana = 20;
-        uint damage = 40;
+        uint256 mana = 20;
+        uint256 damage = 40;
         User memory player = players[msg.sender];
         User memory opponent;
         require(player.MP >= mana, "NOT_ENOUGH_MANA");
-        
-        if (msg.sender == playerAddr[Role.challenger])
+
+        if (msg.sender == playerAddr[Role.challenger]) {
             opponent = players[playerAddr[Role.defender]];
-        else 
+        } else {
             opponent = players[playerAddr[Role.challenger]];
-        
-        unchecked { // for avoid underflow revert
+        }
+
+        unchecked {
+            // for avoid underflow revert
             opponent.HP -= damage;
         }
         players[msg.sender] = player;
-        if (msg.sender == playerAddr[Role.challenger])
+        if (msg.sender == playerAddr[Role.challenger]) {
             players[playerAddr[Role.defender]] = opponent;
-        else 
+        } else {
             players[playerAddr[Role.challenger]] = opponent;
+        }
     }
+
     function destructStab() external onlyParticipants onlyWarrior {
         require(gamePhase == GamePhase.warPhase, "INCORRECT_PHASE");
-        uint mana = 30;
-        uint damage = 50;
+        uint256 mana = 30;
+        uint256 damage = 50;
         User memory player = players[msg.sender];
         User memory opponent;
         require(player.MP >= mana, "NOT_ENOUGH_MANA");
-        
-        if (msg.sender == playerAddr[Role.challenger])
+
+        if (msg.sender == playerAddr[Role.challenger]) {
             opponent = players[playerAddr[Role.defender]];
-        else 
+        } else {
             opponent = players[playerAddr[Role.challenger]];
-        
-        unchecked { // for avoid underflow revert
+        }
+
+        unchecked {
+            // for avoid underflow revert
             opponent.HP -= damage;
         }
         players[msg.sender] = player;
-        if (msg.sender == playerAddr[Role.challenger])
+        if (msg.sender == playerAddr[Role.challenger]) {
             players[playerAddr[Role.defender]] = opponent;
-        else 
+        } else {
             players[playerAddr[Role.challenger]] = opponent;
+        }
     }
 
     function shieldBash() external onlyParticipants onlyWarrior {
         require(gamePhase == GamePhase.warPhase, "INCORRECT_PHASE");
-        uint mana = 15;
-        uint damage = 15;
+        uint256 mana = 15;
+        uint256 damage = 20;
         User memory player = players[msg.sender];
         User memory opponent;
         require(player.MP >= mana, "NOT_ENOUGH_MANA");
-        
-        if (msg.sender == playerAddr[Role.challenger])
+
+        if (msg.sender == playerAddr[Role.challenger]) {
             opponent = players[playerAddr[Role.defender]];
-        else 
+        } else {
             opponent = players[playerAddr[Role.challenger]];
-        
-        unchecked { // for avoid underflow revert
+        }
+
+        unchecked {
+            // for avoid underflow revert
             opponent.HP -= damage;
         }
 
         players[msg.sender] = player;
-        if (msg.sender == playerAddr[Role.challenger])
+        if (msg.sender == playerAddr[Role.challenger]) {
             players[playerAddr[Role.defender]] = opponent;
-        else 
+        } else {
             players[playerAddr[Role.challenger]] = opponent;
+        }
     }
 
     /**
@@ -244,72 +262,83 @@ contract GameInstance is IMultiAttack, Multicall {
      */
     function piercingArrow() external onlyParticipants onlyArcher {
         require(gamePhase == GamePhase.warPhase, "INCORRECT_PHASE");
-        uint mana = 25;
-        uint damage = 50;
+        uint256 mana = 25;
+        uint256 damage = 50;
         User memory player = players[msg.sender];
         User memory opponent;
         require(player.MP >= mana, "NOT_ENOUGH_MANA");
-        
-        if (msg.sender == playerAddr[Role.challenger])
+
+        if (msg.sender == playerAddr[Role.challenger]) {
             opponent = players[playerAddr[Role.defender]];
-        else 
+        } else {
             opponent = players[playerAddr[Role.challenger]];
-        
-        unchecked { // for avoid underflow revert
+        }
+
+        unchecked {
+            // for avoid underflow revert
             opponent.HP -= damage;
         }
 
         players[msg.sender] = player;
-        if (msg.sender == playerAddr[Role.challenger])
+        if (msg.sender == playerAddr[Role.challenger]) {
             players[playerAddr[Role.defender]] = opponent;
-        else 
+        } else {
             players[playerAddr[Role.challenger]] = opponent;
+        }
     }
+
     function multiShot() external onlyParticipants onlyArcher {
         require(gamePhase == GamePhase.warPhase, "INCORRECT_PHASE");
-        uint mana = 35;
-        uint damage = 65;
+        uint256 mana = 35;
+        uint256 damage = 65;
         User memory player = players[msg.sender];
         User memory opponent;
         require(player.MP >= mana, "NOT_ENOUGH_MANA");
-        
-        if (msg.sender == playerAddr[Role.challenger])
+
+        if (msg.sender == playerAddr[Role.challenger]) {
             opponent = players[playerAddr[Role.defender]];
-        else 
+        } else {
             opponent = players[playerAddr[Role.challenger]];
-        
-        unchecked { // for avoid underflow revert
+        }
+
+        unchecked {
+            // for avoid underflow revert
             opponent.HP -= damage;
         }
 
         players[msg.sender] = player;
-        if (msg.sender == playerAddr[Role.challenger])
+        if (msg.sender == playerAddr[Role.challenger]) {
             players[playerAddr[Role.defender]] = opponent;
-        else 
+        } else {
             players[playerAddr[Role.challenger]] = opponent;
+        }
     }
+
     function explosiveShot() external onlyParticipants onlyArcher {
         require(gamePhase == GamePhase.warPhase, "INCORRECT_PHASE");
-        uint mana = 30;
-        uint damage = 60;
+        uint256 mana = 30;
+        uint256 damage = 60;
         User memory player = players[msg.sender];
         User memory opponent;
         require(player.MP >= mana, "NOT_ENOUGH_MANA");
-        
-        if (msg.sender == playerAddr[Role.challenger])
+
+        if (msg.sender == playerAddr[Role.challenger]) {
             opponent = players[playerAddr[Role.defender]];
-        else 
+        } else {
             opponent = players[playerAddr[Role.challenger]];
-        
-        unchecked { // for avoid underflow revert
+        }
+
+        unchecked {
+            // for avoid underflow revert
             opponent.HP -= damage;
         }
 
         players[msg.sender] = player;
-        if (msg.sender == playerAddr[Role.challenger])
+        if (msg.sender == playerAddr[Role.challenger]) {
             players[playerAddr[Role.defender]] = opponent;
-        else 
+        } else {
             players[playerAddr[Role.challenger]] = opponent;
+        }
     }
 
     /**
@@ -317,35 +346,40 @@ contract GameInstance is IMultiAttack, Multicall {
      */
     function fireBall() external onlyParticipants onlyMage {
         require(gamePhase == GamePhase.warPhase, "INCORRECT_PHASE");
-        uint mana = 30;
-        uint damage = 70;
+        uint256 mana = 30;
+        uint256 damage = 70;
         User memory player = players[msg.sender];
         User memory opponent;
         require(player.MP >= mana, "NOT_ENOUGH_MANA");
-        
-        if (msg.sender == playerAddr[Role.challenger])
+
+        if (msg.sender == playerAddr[Role.challenger]) {
             opponent = players[playerAddr[Role.defender]];
-        else 
+        } else {
             opponent = players[playerAddr[Role.challenger]];
-        
-        unchecked { // for avoid underflow revert
+        }
+
+        unchecked {
+            // for avoid underflow revert
             opponent.HP -= damage;
         }
 
         players[msg.sender] = player;
-        if (msg.sender == playerAddr[Role.challenger])
+        if (msg.sender == playerAddr[Role.challenger]) {
             players[playerAddr[Role.defender]] = opponent;
-        else 
+        } else {
             players[playerAddr[Role.challenger]] = opponent;
+        }
     }
+
     function heal() external onlyParticipants onlyMage {
         require(gamePhase == GamePhase.warPhase, "INCORRECT_PHASE");
-        uint mana = 25;
-        uint healAmount = 50;
+        uint256 mana = 25;
+        uint256 healAmount = 50;
         User memory player = players[msg.sender];
         require(player.MP >= mana, "NOT_ENOUGH_MANA");
-        
-        unchecked { // for avoid underflow revert
+
+        unchecked {
+            // for avoid underflow revert
             player.HP += healAmount;
         }
 
@@ -354,26 +388,29 @@ contract GameInstance is IMultiAttack, Multicall {
 
     function lightningBolt() external onlyParticipants onlyMage {
         require(gamePhase == GamePhase.warPhase, "INCORRECT_PHASE");
-        uint mana = 30;
-        uint damage = 60;
+        uint256 mana = 30;
+        uint256 damage = 60;
         User memory player = players[msg.sender];
         User memory opponent;
         require(player.MP >= mana, "NOT_ENOUGH_MANA");
-        
-        if (msg.sender == playerAddr[Role.challenger])
+
+        if (msg.sender == playerAddr[Role.challenger]) {
             opponent = players[playerAddr[Role.defender]];
-        else 
+        } else {
             opponent = players[playerAddr[Role.challenger]];
-        
-        unchecked { // for avoid underflow revert
+        }
+
+        unchecked {
+            // for avoid underflow revert
             opponent.HP -= damage;
         }
 
         players[msg.sender] = player;
-        if (msg.sender == playerAddr[Role.challenger])
+        if (msg.sender == playerAddr[Role.challenger]) {
             players[playerAddr[Role.defender]] = opponent;
-        else 
+        } else {
             players[playerAddr[Role.challenger]] = opponent;
+        }
     }
 
     /**
@@ -381,36 +418,42 @@ contract GameInstance is IMultiAttack, Multicall {
      */
     function thornArmor() external onlyParticipants onlyDruid {
         require(gamePhase == GamePhase.warPhase, "INCORRECT_PHASE");
-        uint mana = 15;
-        uint damage = 25;
+        uint256 mana = 5;
+        uint256 damage = 25;
+        uint256 selfDamage = 15;
         User memory player = players[msg.sender];
         User memory opponent;
         require(player.MP >= mana, "NOT_ENOUGH_MANA");
-        
-        if (msg.sender == playerAddr[Role.challenger])
+
+        if (msg.sender == playerAddr[Role.challenger]) {
             opponent = players[playerAddr[Role.defender]];
-        else 
+        } else {
             opponent = players[playerAddr[Role.challenger]];
-        
-        unchecked { // for avoid underflow revert
+        }
+
+        unchecked {
+            // for avoid underflow revert
             opponent.HP -= damage;
+            player.HP -= selfDamage;
         }
 
         players[msg.sender] = player;
-        if (msg.sender == playerAddr[Role.challenger])
+        if (msg.sender == playerAddr[Role.challenger]) {
             players[playerAddr[Role.defender]] = opponent;
-        else 
+        } else {
             players[playerAddr[Role.challenger]] = opponent;
+        }
     }
 
     function healingTouch() external onlyParticipants onlyDruid {
         require(gamePhase == GamePhase.warPhase, "INCORRECT_PHASE");
-        uint mana = 25;
-        uint healAmount = 50;
+        uint256 mana = 25;
+        uint256 healAmount = 50;
         User memory player = players[msg.sender];
         require(player.MP >= mana, "NOT_ENOUGH_MANA");
-        
-        unchecked { // for avoid underflow revert
+
+        unchecked {
+            // for avoid underflow revert
             player.HP += healAmount;
         }
 
@@ -419,47 +462,52 @@ contract GameInstance is IMultiAttack, Multicall {
 
     function naturesWrath() external onlyParticipants onlyDruid {
         require(gamePhase == GamePhase.warPhase, "INCORRECT_PHASE");
-        uint mana = 25;
-        uint damage = 45;
+        uint256 mana = 25;
+        uint256 damage = 45;
         User memory player = players[msg.sender];
         User memory opponent;
         require(player.MP >= mana, "NOT_ENOUGH_MANA");
-        
-        if (msg.sender == playerAddr[Role.challenger])
+
+        if (msg.sender == playerAddr[Role.challenger]) {
             opponent = players[playerAddr[Role.defender]];
-        else 
+        } else {
             opponent = players[playerAddr[Role.challenger]];
-        
-        unchecked { // for avoid underflow revert
+        }
+
+        unchecked {
+            // for avoid underflow revert
             opponent.HP -= damage;
         }
 
         players[msg.sender] = player;
-        if (msg.sender == playerAddr[Role.challenger])
+        if (msg.sender == playerAddr[Role.challenger]) {
             players[playerAddr[Role.defender]] = opponent;
-        else 
+        } else {
             players[playerAddr[Role.challenger]] = opponent;
+        }
     }
 
     function declareVictory() external onlyParticipants returns (address) {
         require(gamePhase == GamePhase.warPhase, "INCORRECT_PHASE");
         User memory opponent;
 
-        if (msg.sender == playerAddr[Role.challenger])
+        if (msg.sender == playerAddr[Role.challenger]) {
             opponent = players[playerAddr[Role.defender]];
-        else 
+        } else {
             opponent = players[playerAddr[Role.challenger]];
-        
+        }
+
         require(opponent.HP <= 0, "OPPONENT_NOT_DEAD");
         winner = msg.sender;
-
+        gamePhase = GamePhase.winPhase;
         emit winGame(winner);
         return winner;
     }
     /**
      * ####################################### WIN_PAHSE #######################################
      */
-    function winNFTAndTakeWarToken() external onlyParticipants {
+
+    function winNFTAndTakeWarToken() external onlyParticipants returns (uint256) {
         require(gamePhase == GamePhase.winPhase, "INCORRECT_PHASE");
         require(msg.sender == winner, "YOU_ARE_NOT_WINNER");
         address loser;
@@ -467,15 +515,16 @@ contract GameInstance is IMultiAttack, Multicall {
         uint256 winnerBet;
         uint256 prize;
 
-        if (msg.sender == playerAddr[Role.challenger])
+        if (msg.sender == playerAddr[Role.challenger]) {
             loser = playerAddr[Role.defender];
-        else 
+        } else {
             loser = playerAddr[Role.challenger];
+        }
 
         winnerBet = players[msg.sender].userBet;
         loserBet = players[loser].userBet;
         prize = (winnerBet + loserBet) * 90 / 100;
         MAT.transfer(msg.sender, prize);
-        MAN.mint(msg.sender);
+        return MAN.mint(msg.sender);
     }
 }

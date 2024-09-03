@@ -33,7 +33,10 @@ interface IMultiAttack {
         WarClass class;
         UserStatus status; // waiting, ready, war
         uint256 HP;
+        uint256 HP_weight;
         uint256 MP;
+        uint256 MP_weight;
         uint256 userBet;
+        uint256 chargeNum; // 충전 횟수
     }
 }
