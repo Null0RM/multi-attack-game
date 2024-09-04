@@ -36,8 +36,8 @@ contract TestMultiAttack is Test, IMultiAttack {
         v1 = new MultiAttackV1();
         proxy = new MultiAttackProxy(address(v1), address(MAT), address(MAN));
 
-        MAT.registerProxy(address(proxy));
-        MAN.registerProxy(address(proxy));
+        MAT.registerImplementation(address(proxy));
+        MAN.registerImplementation(address(proxy));
 
         vm.deal(address(this), 1000000 ether);
         vm.deal(user1, 1000 ether);
