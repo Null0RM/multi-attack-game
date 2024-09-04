@@ -6,24 +6,24 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 contract MultiAttackToken is ERC20 {
     address owner;
     mapping(address => bool) private instanceAddresses;
-    mapping(address => bool) private proxyAddresses;
+    mapping(address => bool) private implementationAddresses;
 
     constructor() ERC20("Multi Attack Token", "MAT") {
         owner = msg.sender;
     }
 
     modifier onlyGame() {
-        require(proxyAddresses[msg.sender]);
+        require(implementationAddresses[msg.sender]);
         _;
     }
 
     /**
      * registerInstance, deleteInstance를 호출하는 Game컨트랙트를 등록하는 함수,
      */
-    function registerProxy(address proxyAddr) public {
-        require(!proxyAddresses[proxyAddr], "ALREADY_REGISTERED");
-        require(msg.sender == owner || proxyAddresses[msg.sender], "UNAUTHORIZED_SENDER");
-        proxyAddresses[proxyAddr] = true;
+    function registerImplementation(address implementationAddr) public {
+        require(!implementationAddresses[implementationAddr], "ALREADY_REGISTERED");
+        require(msg.sender == owner || implementationAddresses[msg.sender], "UNAUTHORIZED_SENDER");
+        implementationAddresses[implementationAddr] = true;
     }
 
     /**
@@ -38,8 +38,8 @@ contract MultiAttackToken is ERC20 {
     /**
      * 등록 목록을 삭제하기 위한 함수
      */
-    function deleteInstance(address instanceAddr) public onlyGame {
-        require(instanceAddresses[instanceAddr], "NON_EXISTING_ADDRESS");
+    function deleteInstance(address instanceAddr) public {
+        require(instanceAddresses[msg.sender], "UNAUTHORIZED_SENDER");
 
         instanceAddresses[instanceAddr] = false;
     }
@@ -48,7 +48,7 @@ contract MultiAttackToken is ERC20 {
      * 게임에서 instance에 transfer를 하는 상황이라면, user가 allow를 했을 것이기 때문에, approve없이도 할 수 있게 함
      */
     function transferFrom(address from, address to, uint256 value) public override returns (bool) {
-        if (instanceAddresses[msg.sender] || proxyAddresses[msg.sender]) {
+        if (instanceAddresses[msg.sender] || implementationAddresses[msg.sender]) {
             _transfer(from, to, value);
             return true;
         } else {
@@ -62,7 +62,7 @@ contract MultiAttackToken is ERC20 {
      */
     function mint() public payable {
         require(msg.value >= 0.001 ether, "INSUFFICIENT_AMOUNT_DEPOSITED");
-
+        
         _mint(msg.sender, msg.value);
     }
 

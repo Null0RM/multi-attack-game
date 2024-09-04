@@ -53,7 +53,7 @@ contract MultiAttackV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeab
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {
-        MAT.registerProxy(newImplementation);
-        MAN.registerProxy(newImplementation);
+        MAT.registerImplementation(newImplementation);
+        MAN.registerImplementation(newImplementation);
     }
 }

@@ -6,7 +6,8 @@ interface IMultiAttack {
         readyPhase,
         classPhase,
         warPhase,
-        winPhase
+        winPhase,
+        endPhase
     }
 
     enum WarClass {

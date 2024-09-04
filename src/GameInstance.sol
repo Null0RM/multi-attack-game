@@ -96,15 +96,7 @@ contract GameInstance is IMultiAttack, Multicall {
         players[msg.sender] = player;
         MAT.transferFrom(msg.sender, address(this), bettingAmount);
     }
-    /**
-     * ################################### READY ######################################
-     * ready phase
-     * 전투를 준비하는 phase.
-     */
 
-    /**
-     * 다른 컨트랙트 또는 EOA를 이용해 전투를 진행하고싶을 경우 이용하는 함수
-     */
     function delegationRole(address _to) external onlyParticipants returns (User memory character) {
         if (msg.sender == playerAddr[Role.challenger]) {
             playerAddr[Role.challenger] = _to;
@@ -115,7 +107,35 @@ contract GameInstance is IMultiAttack, Multicall {
         }
         character = players[_to];
     }
+    /**
+     * ################################### READY ######################################
+     * ready phase
+     * 전투를 준비하는 phase.
+     */
 
+    /**
+     * 다른 컨트랙트 또는 EOA를 이용해 전투를 진행하고싶을 경우 이용하는 함수
+     */
+    
+    function runAway() external onlyParticipants {
+        require(gamePhase == GamePhase.readyPhase, "NOT_READY_PHASE");
+        User player = players[msg.sender];
+        require(player.status <= UserStatus.ready, "CANNOT_RUNAWAY");
+        
+        if (msg.sender == playerAddr[Role.challenger]) {
+            winner = playerAddr[Role.defender];
+        } else {
+            winner = playerAddr[Role.challenger];
+        }
+        
+        gamePhase = GamePhase.winPhase;
+        if (player.userBet > 0) { // Re-entrancy 악용이 불가능한 ERC20 토큰이기 때문에, check-effect-interaction을 지키지 않고, 변수 추가선언을 막아 가스비를 아낄 수 있음.
+            MAT.transfer(msg.sender, player.userBet / 5); // 절반만 돌려받을 수 있음
+            player.userBet /= 5;
+        }
+
+        player[msg.sender] = player;
+    }
     /**
      * 최초베팅 후, 게임 준비를 완료하는 함수
      */
@@ -138,6 +158,7 @@ contract GameInstance is IMultiAttack, Multicall {
     function selectClass(WarClass class) external onlyParticipants {
         require(gamePhase == GamePhase.classPhase, "NOT_CLASS_SELECTION_PHASE");
         User memory player = players[msg.sender];
+        require(player.status == UserStatus.ready, "ALREADY_SELECTED_CLAASS");
 
         if (class == WarClass.Warrior) {
             player.class = WarClass.Warrior;
@@ -520,11 +541,13 @@ contract GameInstance is IMultiAttack, Multicall {
         } else {
             loser = playerAddr[Role.challenger];
         }
-
+        
+        gamePhase = GamePhase.endPhase;
         winnerBet = players[msg.sender].userBet;
         loserBet = players[loser].userBet;
         prize = (winnerBet + loserBet) * 90 / 100;
         MAT.transfer(msg.sender, prize);
+        MAT.deleteInstance(address(this));
         return MAN.mint(msg.sender);
     }
 }

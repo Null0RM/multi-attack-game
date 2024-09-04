@@ -16,10 +16,10 @@ contract MultiAttackProxy is ERC1967Proxy {
     /** 
     단 한번만 호출할 수 있는 함수
      */
-    function registerProxy(address MAT, address MAN, address newImplementation) external {
+    function registerImplementation(address MAT, address MAN, address newImplementation) external {
         require(onlyOnce == false, "only once");
         onlyOnce = true;
-        MultiAttackNFT(MAN).registerProxy(newImplementation);
-        MultiAttackToken(MAT).registerProxy(newImplementation);
+        MultiAttackNFT(MAN).registerImplementation(newImplementation);
+        MultiAttackToken(MAT).registerImplementation(newImplementation);
     }
 }
