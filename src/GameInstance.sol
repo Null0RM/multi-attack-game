@@ -71,6 +71,11 @@ contract GameInstance is IMultiAttack, Multicall {
         player = players[playerAddr[role]];
     }
 
+    /**
+     * 베팅을 하는 함수 
+     * 최초 1회 베팅 시에는 가중치가 적용되지 않은 체력, 마나포인트를 주며, 직업 선택 이후부터는 가중치가 적용된다.
+     * 이러한 특성을 전략적으로 사용할 수 있다.
+     */
     function Betting(uint256 bettingAmount, uint256 manaPointRate, uint256 healthPointRate) public onlyParticipants {
         require(gamePhase >= GamePhase.readyPhase, "INCORRECT_PHASE"); // 게임 준비 단계 부터 베팅 가능
         require(gamePhase < GamePhase.winPhase, "INCORRECT_PHASE"); // 끝나기 전 까지만 베팅 가능
@@ -97,7 +102,12 @@ contract GameInstance is IMultiAttack, Multicall {
         MAT.transferFrom(msg.sender, address(this), bettingAmount);
     }
 
+    /**    
+     * 다른 컨트랙트 또는 EOA를 이용해 전투를 진행하고싶을 경우 이용하는 함수.
+     * 이미 해당 주소가 역할이 있을 경우, revert된다. 
+     */
     function delegationRole(address _to) external onlyParticipants returns (User memory character) {
+        require(players[_to].role != Role.challenger && players[_to].role != Role.defender, "already have role");
         if (msg.sender == playerAddr[Role.challenger]) {
             playerAddr[Role.challenger] = _to;
             players[_to] = players[msg.sender];
@@ -114,12 +124,11 @@ contract GameInstance is IMultiAttack, Multicall {
      */
 
     /**
-     * 다른 컨트랙트 또는 EOA를 이용해 전투를 진행하고싶을 경우 이용하는 함수
+     * 더이상의 게임 진행 없이 패배를 선언하는 함수.
      */
-    
     function runAway() external onlyParticipants {
         require(gamePhase == GamePhase.readyPhase, "NOT_READY_PHASE");
-        User player = players[msg.sender];
+        User memory player = players[msg.sender];
         require(player.status <= UserStatus.ready, "CANNOT_RUNAWAY");
         
         if (msg.sender == playerAddr[Role.challenger]) {
@@ -129,12 +138,12 @@ contract GameInstance is IMultiAttack, Multicall {
         }
         
         gamePhase = GamePhase.winPhase;
-        if (player.userBet > 0) { // Re-entrancy 악용이 불가능한 ERC20 토큰이기 때문에, check-effect-interaction을 지키지 않고, 변수 추가선언을 막아 가스비를 아낄 수 있음.
+        if (player.userBet > 0) { // Re-entrancy 악용이 불가능한 ERC20 토큰이기 때문에, check-effect-interaction을 굳이 지키지 않고, 변수 추가선언을 막아 가스비를 아낄 수 있음.
             MAT.transfer(msg.sender, player.userBet / 5); // 절반만 돌려받을 수 있음
             player.userBet /= 5;
         }
 
-        player[msg.sender] = player;
+        players[msg.sender] = player;
     }
     /**
      * 최초베팅 후, 게임 준비를 완료하는 함수
@@ -154,6 +163,10 @@ contract GameInstance is IMultiAttack, Multicall {
 
     /**
      * ################################### CLASS_SELECTION ######################################
+     */
+    /**
+     * 전투에 사용할 직업(또는 캐릭터)를 고르는 함수.
+     * 이를 통해 가중치를 얻을 수 있다.
      */
     function selectClass(WarClass class) external onlyParticipants {
         require(gamePhase == GamePhase.classPhase, "NOT_CLASS_SELECTION_PHASE");

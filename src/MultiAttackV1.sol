@@ -26,9 +26,13 @@ contract MultiAttackV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeab
         MAN = MultiAttackNFT(_MAN);
     }
 
+    /**
+     * 새로운 전장을 열고, 상대방을 초대하는 함수.
+     * 최소 0.001 ether의 War Token을 지출해야 한다.
+     */
     function invite(address _to, string calldata message) public payable whenNotPaused returns (address newInstance) {
-        require(MAT.balanceOf(msg.sender) >= 0.0001 ether, "INSUFFICIENT_INVITE_FEE");
-        MAT.transferFrom(msg.sender, address(this), 0.0001 ether); // 참가비로 지출
+        require(MAT.balanceOf(msg.sender) >= 0.001 ether, "INSUFFICIENT_INVITE_FEE");
+        MAT.transferFrom(msg.sender, address(this), 0.001 ether); // 참가비로 지출
 
         (bool suc,) = _to.call{value: 1}(abi.encodePacked(message)); // msg를 통해 게임으로 초대
         require(suc, "INVITE_FAILED_BY_SEND_FAILED");
@@ -56,4 +60,11 @@ contract MultiAttackV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeab
         MAT.registerImplementation(newImplementation);
         MAN.registerImplementation(newImplementation);
     }
+
+    
+    
+    
+    
+    
 }
+
